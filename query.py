@@ -22,6 +22,7 @@ init_app()
 
 # 1. What is the datatype of the returned value of
 # ``Brand.query.filter_by(name='Ford')``?
+
 # The datatype is a Flask SQLAlchemy BaseQuery object.
 
 
@@ -29,9 +30,10 @@ init_app()
 # 2. In your own words, what is an association table, and what type of
 # relationship (many to one, many to many, one to one, etc.) does an
 # association table manage?
-# An association table is a table that holds together two other tables
-# that have a "many to many" relationship, which is actually two one to many
-# relationships. The fields in an association table are not meaningful.
+
+# An association table is a table that manages a many to many relationship between
+# two other tables. Its columns include foreign keys to the other two tables, and
+# also a serial primary key.
 
 
 
@@ -62,7 +64,7 @@ q6 = Brand.query.filter(Brand.founded == 1903, Brand.discontinued.is_(None)).all
 q7 = Brand.query.filter((Brand.discontinued.isnot(None)) | (Brand.founded < 1950)).all()
 
 # Get any model whose brand_id is not "for."
-q8 = Model.query.filter(Model.brand_id != "for").first()
+q8 = Model.query.filter(Model.brand_id != "for").all()
 
 
 
@@ -88,23 +90,37 @@ def get_brands_summary():
     """Prints out each brand name and each model name with year for that brand
     using only ONE database query."""
 
-    brand_models = db.session.query(Brand.name,
-                                    Model.name,
-                                    Model.year).join(Model).all()
+    models_with_brand = db.session.query(Brand.name,
+                                         Model.name,
+                                         Model.year).outerjoin(Model).all()
 
-    for brand in brand_models:
-        print brand
+    brand_models = {}
+
+    for i in models_with_brand:
+        if i[0] in brand_models:
+            brand_models[i[0]].extend([(i[1], i[2])])
+        else:
+            brand_models[i[0]] = [(i[1], i[2])]
+
+    for key, value in brand_models.iteritems():
+        print "{} \n {} \n".format(key, value)
 
 
 def search_brands_by_name(mystr):
     """Returns all Brand objects corresponding to brands whose names include
     the given string."""
 
-    return
+    search = '%{}%'.format(mystr)
+
+    similar_brands = Brand.query.filter(Brand.name.like(search)).all()
+
+    return similar_brands
 
 
 def get_models_between(start_year, end_year):
     """Returns all Model objects corresponding to models made between
     start_year (inclusive) and end_year (exclusive)."""
 
-    return
+    models = Model.query.filter(Model.year >= start_year, Model.year < end_year).all()
+
+    return models
